@@ -1,0 +1,75 @@
+name:                sokoban-gloss
+version:             0.1.0.0
+github:              "githubuser/sokoban-gloss"
+license:             BSD3
+author:              "Roland Stellmach"
+maintainer:          "fun.redoc@gmail.com"
+copyright:           "2020 Roland"
+
+data-dir: data
+data-files:
+- level.txt
+- wall_50x50.bmp
+- crate1_diffuse_50x50.bmp
+- crate2_diffuse_50x50.bmp
+- alien.bmp
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/sokoban-gloss#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- lens
+- transformers
+- bmp
+- gloss
+
+library:
+  source-dirs: src
+  generated-other-modules:
+    - Paths_sokoban_gloss
+
+executables:
+  sokoban-gloss-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - sokoban-gloss
+    generated-other-modules:
+    - Paths_sokoban_gloss
+  sokoban-ascii-exe:
+    main:                Main.hs
+    source-dirs:         ascii
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - sokoban-gloss
+    generated-other-modules:
+    - Paths_sokoban_gloss
+
+tests:
+  sokoban-gloss-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - sokoban-gloss

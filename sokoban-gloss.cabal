@@ -1,0 +1,103 @@
+cabal-version: 2.0
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 30a8e1343a174b3c0b67c202f934d1eafaa9f5e952cdadb307d0ec569525a5fe
+
+name:           sokoban-gloss
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/sokoban-gloss#readme>
+homepage:       https://github.com/githubuser/sokoban-gloss#readme
+bug-reports:    https://github.com/githubuser/sokoban-gloss/issues
+author:         Roland Stellmach
+maintainer:     fun.redoc@gmail.com
+copyright:      2020 Roland
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+data-files:
+    level.txt
+    wall_50x50.bmp
+    crate1_diffuse_50x50.bmp
+    crate2_diffuse_50x50.bmp
+    alien.bmp
+data-dir:       data
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/sokoban-gloss
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_sokoban_gloss
+  autogen-modules:
+      Paths_sokoban_gloss
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , bmp
+    , gloss
+    , lens
+    , transformers
+  default-language: Haskell2010
+
+executable sokoban-ascii-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_sokoban_gloss
+  autogen-modules:
+      Paths_sokoban_gloss
+  hs-source-dirs:
+      ascii
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bmp
+    , gloss
+    , lens
+    , sokoban-gloss
+    , transformers
+  default-language: Haskell2010
+
+executable sokoban-gloss-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_sokoban_gloss
+  autogen-modules:
+      Paths_sokoban_gloss
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bmp
+    , gloss
+    , lens
+    , sokoban-gloss
+    , transformers
+  default-language: Haskell2010
+
+test-suite sokoban-gloss-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_sokoban_gloss
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bmp
+    , gloss
+    , lens
+    , sokoban-gloss
+    , transformers
+  default-language: Haskell2010
