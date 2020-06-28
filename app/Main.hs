@@ -5,6 +5,7 @@ module Main where
 import Debug.Trace (trace)
 
 import Lib
+import qualified Data.Vector as V
 import Data.Either
 import Data.Maybe (fromMaybe)
 import Control.Monad
@@ -30,7 +31,6 @@ screenWidth  = 640::Float
 screenHeight = 400::Float
 
 handleInput::Event->GameState->GameState
---handleInput (EventKey _          Up   _ _) (StartGame game) = Playing game
 handleInput (EventKey (Char c) Down _ _) (Playing game) = if isWon $ newGame^.field
                                                           then WonGame newGame
                                                           else Playing newGame
@@ -40,11 +40,23 @@ handleInput (EventKey (Char c) Down _ _) (Playing game) = if isWon $ newGame^.fi
                    'j' -> moveManInGame MoveUp    game
                    'k' -> moveManInGame MoveDown  game
                    'l' -> moveManInGame MoveRight game
+                   'a' -> moveManInGame MoveLeft  game
+                   's' -> moveManInGame MoveUp    game
+                   'w' -> moveManInGame MoveDown  game
+                   'd' -> moveManInGame MoveRight game
+                   _   -> game
 handleInput _                              gameState      = gameState
 
 handleInputIO::Event->GameState->IO GameState
-handleInputIO (EventKey _          Up   _ _) (StartGame game) = return $ Playing game
-handleInputIO (EventKey _          Up   _ _) (WonGame   game) = undefined
+handleInputIO (EventKey _          Up   _ _) StartGame        = do level0 <- fileLevelReader 0
+                                                                   return $ case level0 of
+                                                                              Nothing -> ErrorState "Failed to load Levels."
+                                                                              Just level0' -> Playing $ Game 0 level0'
+handleInputIO (EventKey (SpecialKey KeyEnter) Up _ _) (WonGame   game) = do nextLevel <- fileLevelReader $ game^.level + 1
+                                                                            return $ case nextLevel of
+                                                                              Nothing -> FinishedAllLevels game
+                                                                              Just level' -> Playing $ Game (game^.level + 1) level'
+                            
 handleInputIO (EventKey _          Up   _ _) (LostGame  game) = undefined
 handleInputIO evt                            gameState        = return $ handleInput evt gameState
 
@@ -67,8 +79,14 @@ makeLenses ''GameConfiguraton
 
 
 gameAsPicture::GameConfiguraton->GameState->Picture
-gameAsPicture gameConf (StartGame game) = uncurry scale (gameConf^.scaleFactors )
-                                                        $ Color red
+gameAsPicture gameConf (ErrorState desc) = uncurry scale (gameConf^.scaleFactors)
+                                                           $ Color red
+                                                           $ pictures [ translate 0 (6*(gameConf^.objectSize)) $ Text desc
+                                                                      , translate 0 (3*(gameConf^.objectSize)) $ Text "press some key"
+                                                                      , Text "to quit..."
+                                                                      ]
+gameAsPicture gameConf StartGame = uncurry scale (gameConf^.scaleFactors )
+                                                        $ Color yellow
                                                         $ pictures [translate 0 (3*(gameConf^.objectSize)) $ Text "press some key"
                                                                    ,Text "to start game..."
                                                                    ]
@@ -85,6 +103,12 @@ gameAsPicture gameConf (Playing game) =
            ]
     where
     translate_ object (x,y) = translate (gameConf^.objectSize*x) (gameConf^.objectSize*y) object
+gameAsPicture gameConf (WonGame game) = uncurry scale (gameConf^.scaleFactors)
+                                                           $ Color green
+                                                           $ pictures [ translate 0 (6*(gameConf^.objectSize)) $ Text ("you've won level " ++ show (game^.level + 1))
+                                                                      , translate 0 (3*(gameConf^.objectSize)) $ Text "press some key"
+                                                                      , Text "to enter next level..."
+                                                                      ]
 gameAsPicture gameConf _ = undefined
 
 loadPicture::FilePath->IO (Picture, Point)
@@ -111,8 +135,6 @@ main = do
    let sokobanTexture =  scale (objectSize/(sokobanTextureSize^._1)) (objectSize/(sokobanTextureSize^._2)) sokobanTexture'
    print sokobanTextureSize
 
---   wallTexture <- trace "LOADING.." $ getDataFileName "wall_50x50.bmp" >>= loadBMP
---   foldr (\p acc -> max acc ((uncurry max) p)) minBound $ (field' ^.. walls . folded)
    args <- getArgs
    appMode <- case args of "ascii":[] -> return Ascii
                            "gloss":[] -> return Gloss
@@ -120,12 +142,15 @@ main = do
                            -- _ -> do putStrLn "Invalid arguments."
                            --          putStrLn "Usage:"
                            --          exitFailure
-   field' <- fileLevelReader 200
-   let initialGame = StartGame $ Game {_level=0, _field=field'}
+   --field' <- fileLevelReader 200
+   --let initialGame = StartGame $ Game {_level=0, _field=field'}
+   let initialGame = StartGame -- $ Game {_level=0, _field=field'}
+   allLevels <- allLevelsFileLevelReader
    let (xmax, ymax) = smul objectSize
                     $ add (2,2)
                     $ toPoint
-                    $ foldr (\(x,y) (x',y') -> (max x x', max y y')) (minBound, minBound) (field' ^.. walls . folded)
+                    $ foldr (\(x,y) (x',y') -> (max x x', max y y')) (minBound, minBound) (V.foldr (\f a->a++(f^.walls)) [] allLevels)
+
    let (scalex, scaley) = (screenWidth, screenHeight) `Main.div` (xmax, ymax)
    let scalePic = min scalex scaley
    print (scalex, scaley)

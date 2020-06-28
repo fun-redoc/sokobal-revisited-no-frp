@@ -5,9 +5,9 @@ import Data.Maybe (isNothing)
 import Data.List
 import Control.Lens
 import Paths_sokoban_gloss
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as V
 
-type Field2d a = V.Vector [a]
+type Field2d a = [[a]]
 type Pos = (Int,Int)
 type DirVec = (Int,Int)
 
@@ -37,7 +37,7 @@ smul n (x2,y2) = (n*x2,n*y2)
 
 -- see: https://de.wikipedia.org/wiki/Sokoban
 testLevelChars:: Field2d Char
-testLevelChars =  V.fromList ["#######",
+testLevelChars =             ["#######",
                               "## * @#",
                               "#*. o #",
                               "#######"]
@@ -48,11 +48,12 @@ makeLenses ''GameField
 data Game = Game { _level::Int, _field::GameField}
 makeLenses ''Game
 
-data GameState = StartGame         Game 
+data GameState = StartGame --      Game
                | Playing           Game
                | WonGame           Game
                | LostGame          Game
                | FinishedAllLevels Game
+               | ErrorState        String
 makeLenses ''GameState
 
 data Dir = NoMove | MoveRight | MoveLeft | MoveUp | MoveDown deriving (Show, Eq)
@@ -86,9 +87,9 @@ moveMan MoveUp    = moveMan' goUp
 moveMan MoveDown  = moveMan' goDown
 
 moveMan'::DirVec->GameField->GameField
-moveMan' (dx,dy) gf = if moveSuccess 
-                      then gf & sokoban .~ manMovedPos 
-                              & crates .~ cratesMoved 
+moveMan' (dx,dy) gf = if moveSuccess
+                      then gf & sokoban .~ manMovedPos
+                              & crates .~ cratesMoved
                       else gf
   where
   manMovedPos = (\oldPos dir->let newPos = add oldPos dir
@@ -157,16 +158,28 @@ gameFieldFromChars i css = fromRows (0::Int) (fromLevelChars css i) initGameFiel
       fromCell _ _ _  _         = undefined
 
 
-fileLevelReader ::  Int -> IO GameField
-fileLevelReader n = fmap (gameFieldFromChars 0) (fileLevelReaderChars' n)
-  where
-      fileLevelReaderChars'::Int->IO (Field2d Char)
-      fileLevelReaderChars' n' =
+--fileLevelReader_old ::  Int -> IO (Maybe GameField)
+--fileLevelReader_old n = fmap (gameFieldFromChars 0) <$> fileLevelReaderChars' n
+--  where
+--      fileLevelReaderChars'::Int->IO (Maybe (Field2d Char))
+--      fileLevelReaderChars' n' =
+--            getDataFileName "level.txt"
+--              >>= readFile
+--              >>= (return . splitOnEmptyString . lines)
+--              >>= (\xs->return ((V.fromList xs) V.!? n'))
+
+fileLevelReader ::  Int -> IO (Maybe GameField)
+fileLevelReader n = do
+  allLevels <- allLevelsFileLevelReader
+  return $ allLevels V.!? n
+
+allLevelsFileLevelReader::IO (V.Vector GameField)
+allLevelsFileLevelReader =
             getDataFileName "level.txt"
               >>= readFile
-              >>= (return . V.fromList . splitOnEmptyString . lines)
-              >>= (\xs->return (xs V.!? n'))
-
+              >>= (return . splitOnEmptyString . lines)
+              >>= return . V.fromList
+              >>= return . fmap (gameFieldFromChars 0)
 
 printGameField :: GameField  -> IO ()
 printGameField = print' . charsFromGameField  where
