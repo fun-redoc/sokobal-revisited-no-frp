@@ -29,11 +29,24 @@ backgroundColor = makeColor 0 0 0 255
 screenWidth  = 640::Float
 screenHeight = 400::Float
 
-handleInput (EventKey (Char 'h') Down _ _) game = moveManInGame MoveLeft game
-handleInput (EventKey (Char 'j') Down _ _) game = moveManInGame MoveUp game  -- gloss coordinates system is mirrored
-handleInput (EventKey (Char 'k') Down _ _) game = moveManInGame MoveDown game
-handleInput (EventKey (Char 'l') Down _ _) game = moveManInGame MoveRight game
-handleInput _ game = game
+handleInput::Event->GameState->GameState
+--handleInput (EventKey _          Up   _ _) (StartGame game) = Playing game
+handleInput (EventKey (Char c) Down _ _) (Playing game) = if isWon $ newGame^.field
+                                                          then WonGame newGame
+                                                          else Playing newGame
+  where
+    newGame = case c of
+                   'h' -> moveManInGame MoveLeft  game
+                   'j' -> moveManInGame MoveUp    game
+                   'k' -> moveManInGame MoveDown  game
+                   'l' -> moveManInGame MoveRight game
+handleInput _                              gameState      = gameState
+
+handleInputIO::Event->GameState->IO GameState
+handleInputIO (EventKey _          Up   _ _) (StartGame game) = return $ Playing game
+handleInputIO (EventKey _          Up   _ _) (WonGame   game) = undefined
+handleInputIO (EventKey _          Up   _ _) (LostGame  game) = undefined
+handleInputIO evt                            gameState        = return $ handleInput evt gameState
 
 toPoint::Pos -> Point
 toPoint = over both fromIntegral
@@ -44,6 +57,7 @@ div::Point->Point->Point
 div (x,y) (x',y') = (x/x', y/y')
 
 data GameConfiguraton = GameConfiguraton { _objectSize::Size
+                                         , _scaleFactors::Point
                                          , _wallTexture::Picture
                                          , _crateTexture::Picture
                                          , _cratePutTexture::Picture
@@ -52,15 +66,26 @@ data GameConfiguraton = GameConfiguraton { _objectSize::Size
 makeLenses ''GameConfiguraton
 
 
-gameAsPicture::GameConfiguraton->Game->Picture
-gameAsPicture gameConf game =
+gameAsPicture::GameConfiguraton->GameState->Picture
+gameAsPicture gameConf (StartGame game) = uncurry scale (gameConf^.scaleFactors )
+                                                        $ Color red
+                                                        $ pictures [translate 0 (3*(gameConf^.objectSize)) $ Text "press some key"
+                                                                   ,Text "to start game..."
+                                                                   ]
+
+gameAsPicture gameConf (Playing game) =
   pictures [ pictures $ fmap (translate_ (gameConf^.wallTexture) . toPoint) (game ^. (field . walls))
+           , pictures $ fmap (translate_ (gameConf^.cratePutTexture) . toPoint) (game ^. (field . storage))
+--           , pictures $ fmap (translate_ (Color (greyN 0.6) 
+--                                          $ rectangleSolid (gameConf^.objectSize) (gameConf^.objectSize)
+--                                         ) . toPoint) 
+--                                         (game ^. (field . storage))
            , pictures $ fmap (translate_ (gameConf^.crateTexture) . toPoint) (game ^. (field . crates))
-           , pictures $ fmap (translate_ (Color (greyN 0.6) $ rectangleSolid (gameConf^.objectSize) (gameConf^.objectSize)) . toPoint) (game ^. (field . storage))
            , maybe Blank (translate_ (gameConf^.sokobanTexture) . toPoint) (game^.field.sokoban)
            ]
     where
     translate_ object (x,y) = translate (gameConf^.objectSize*x) (gameConf^.objectSize*y) object
+gameAsPicture gameConf _ = undefined
 
 loadPicture::FilePath->IO (Picture, Point)
 loadPicture fileName = do
@@ -80,7 +105,7 @@ main = do
    --   crate
    (crateTexture, crateTextureSize) <- loadPicture "crate1_diffuse_50x50.bmp"
    --   create brought to its place
-   (cratePutTexture, cratePutTextureSize) <- loadPicture "crate1_diffuse_50x50.bmp"
+   (cratePutTexture, cratePutTextureSize) <- loadPicture "crate2_diffuse_50x50.bmp"
    --   sokoban
    (sokobanTexture', sokobanTextureSize) <- loadPicture "alien.bmp"
    let sokobanTexture =  scale (objectSize/(sokobanTextureSize^._1)) (objectSize/(sokobanTextureSize^._2)) sokobanTexture'
@@ -95,9 +120,12 @@ main = do
                            -- _ -> do putStrLn "Invalid arguments."
                            --          putStrLn "Usage:"
                            --          exitFailure
-   field' <- fileLevelReader 0
-   let initialGame = Game {_level=0, _field=field'}
-   let (xmax, ymax) = smul objectSize $ add (2,2) $ toPoint $ foldr (\(x,y) (x',y') -> (max x x', max y y')) (minBound, minBound) (field' ^.. walls . folded)
+   field' <- fileLevelReader 200
+   let initialGame = StartGame $ Game {_level=0, _field=field'}
+   let (xmax, ymax) = smul objectSize
+                    $ add (2,2)
+                    $ toPoint
+                    $ foldr (\(x,y) (x',y') -> (max x x', max y y')) (minBound, minBound) (field' ^.. walls . folded)
    let (scalex, scaley) = (screenWidth, screenHeight) `Main.div` (xmax, ymax)
    let scalePic = min scalex scaley
    print (scalex, scaley)
@@ -108,11 +136,13 @@ main = do
                                    (-(screenHeight/2)+(objectSize*scalePic))
                                    . scale scalePic scalePic
                                    . gameAsPicture (GameConfiguraton objectSize
+                                                                     (scalex, scaley)
                                                                      wallTexture
                                                                      crateTexture
                                                                      cratePutTexture
                                                                      sokobanTexture)
                                    ))
-               (liftM'' handleInput)
+               --(liftM'' handleInput)
+               handleInputIO
                (liftM'' (const id))
    exitSuccess

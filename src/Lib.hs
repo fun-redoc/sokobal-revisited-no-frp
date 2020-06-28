@@ -5,10 +5,12 @@ import Data.Maybe (isNothing)
 import Data.List
 import Control.Lens
 import Paths_sokoban_gloss
+import qualified Data.Vector.Unboxed as V
 
-type Field2d a = [[a]]
+type Field2d a = V.Vector [a]
 type Pos = (Int,Int)
 type DirVec = (Int,Int)
+
 
 someFunc::IO ()
 someFunc = putStrLn "NOT IMPLEMENTED"
@@ -35,16 +37,23 @@ smul n (x2,y2) = (n*x2,n*y2)
 
 -- see: https://de.wikipedia.org/wiki/Sokoban
 testLevelChars:: Field2d Char
-testLevelChars =  [ "#######",
-                    "## * @#",
-                    "#*. o #",
-                    "#######"]
+testLevelChars =  V.fromList ["#######",
+                              "## * @#",
+                              "#*. o #",
+                              "#######"]
 
 data GameField = GameField { _walls::[Pos], _storage::[Pos], _crates::[Pos], _sokoban::Maybe Pos } deriving (Eq, Show)
 makeLenses ''GameField
 
 data Game = Game { _level::Int, _field::GameField}
 makeLenses ''Game
+
+data GameState = StartGame         Game 
+               | Playing           Game
+               | WonGame           Game
+               | LostGame          Game
+               | FinishedAllLevels Game
+makeLenses ''GameState
 
 data Dir = NoMove | MoveRight | MoveLeft | MoveUp | MoveDown deriving (Show, Eq)
 
@@ -77,7 +86,10 @@ moveMan MoveUp    = moveMan' goUp
 moveMan MoveDown  = moveMan' goDown
 
 moveMan'::DirVec->GameField->GameField
-moveMan' (dx,dy) gf = if moveSuccess then gf{_sokoban=manMovedPos, _crates=cratesMoved} else gf
+moveMan' (dx,dy) gf = if moveSuccess 
+                      then gf & sokoban .~ manMovedPos 
+                              & crates .~ cratesMoved 
+                      else gf
   where
   manMovedPos = (\oldPos dir->let newPos = add oldPos dir
                               in if isWall gf newPos then oldPos else newPos
@@ -152,8 +164,8 @@ fileLevelReader n = fmap (gameFieldFromChars 0) (fileLevelReaderChars' n)
       fileLevelReaderChars' n' =
             getDataFileName "level.txt"
               >>= readFile
-              >>= (return . splitOnEmptyString . lines)
-              >>= (\xs->return (xs!!n'))
+              >>= (return . V.fromList . splitOnEmptyString . lines)
+              >>= (\xs->return (xs V.!? n'))
 
 
 printGameField :: GameField  -> IO ()
