@@ -13,6 +13,9 @@ data-files:
 - crate1_diffuse_50x50.bmp
 - crate2_diffuse_50x50.bmp
 - alien.bmp
+- BluesLoops_11_StayOnBeat.com.wav
+- thump.wav
+- twang.wav
 
 extra-source-files:
 - README.md
@@ -34,6 +37,7 @@ dependencies:
 - transformers
 - bmp
 - gloss
+- ALUT
 
 library:
   source-dirs: src

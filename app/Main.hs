@@ -8,6 +8,7 @@ import Lib
 import qualified Data.Vector as V
 import Data.Either
 import Data.Maybe (fromMaybe)
+import Data.List ( intercalate )
 import Control.Monad
 import Codec.BMP
 import Graphics.Gloss.Interface.IO.Game
@@ -17,7 +18,30 @@ import System.IO
 import System.Environment
 import System.Exit
 import Control.Lens
+import qualified Sound.ALUT as AL hiding (Static)
 import Paths_sokoban_gloss
+
+
+loadSound path = do
+      -- Create an AL buffer from the given sound file.
+      buf <- AL.createBuffer  (AL.File path)
+      source <- AL.genObjectName
+      AL.buffer source AL.$= Just buf
+      return source
+
+playSound :: AL.Source -> IO ()
+playSound source = do
+    AL.play [source]
+    -- Normally nothing should go wrong above, but one never knows...
+    errs <- AL.get AL.alErrors
+    unless (null errs) $
+        hPutStrLn stderr (intercalate "," [ d | AL.ALError _ d <- errs ])
+    return ()
+
+playLoop :: AL.Source -> IO ()
+playLoop source = do
+    AL.loopingMode source AL.$= AL.Looping
+    playSound source
 
 liftM'::Monad m=>(a->b)->(a->m b)
 liftM' f x = return $ f x
@@ -122,7 +146,8 @@ loadPicture fileName = do
 
 
 main :: IO ()
-main = do
+--main = do
+main = AL.withProgNameAndArgs AL.runALUT $ \progName args -> do
    -- load images
    (wallTexture, wallTextureSize) <- loadPicture "wall_50x50.bmp"
    let objectSize = uncurry max wallTextureSize
@@ -133,7 +158,12 @@ main = do
    --   sokoban
    (sokobanTexture', sokobanTextureSize) <- loadPicture "alien.bmp"
    let sokobanTexture =  scale (objectSize/(sokobanTextureSize^._1)) (objectSize/(sokobanTextureSize^._2)) sokobanTexture'
-   print sokobanTextureSize
+   -- sounds
+--   thumpSound <- loadSound "thump.wav"
+   --getDataFileName "BluesLoops_11_StayOnBeat.com.wav" >>= print
+   bluesLoop <- getDataFileName "BluesLoops_11_StayOnBeat.com.wav" >>= loadSound
+   AL.sourceGain bluesLoop AL.$= 0.1 -- lower the volume of the loop
+   playLoop bluesLoop
 
    args <- getArgs
    appMode <- case args of "ascii":[] -> return Ascii

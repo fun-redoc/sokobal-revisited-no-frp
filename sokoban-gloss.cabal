@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ae5bf52a6f75a305fdaeb79ffe4ad70c5343b5fe5fa24bdfb69075afe3222309
+-- hash: 4c4112eb8ceb8dd2cf836f6146583129de2ce4b940d92be3fa73076dc7e4b533
 
 name:           sokoban-gloss
 version:        0.1.0.0
@@ -26,6 +26,9 @@ data-files:
     crate1_diffuse_50x50.bmp
     crate2_diffuse_50x50.bmp
     alien.bmp
+    BluesLoops_11_StayOnBeat.com.wav
+    thump.wav
+    twang.wav
 data-dir:       data
 
 source-repository head
@@ -42,7 +45,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      ALUT
+    , base >=4.7 && <5
     , bmp
     , gloss
     , lens
@@ -60,7 +64,8 @@ executable sokoban-ascii-exe
       ascii
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      ALUT
+    , base >=4.7 && <5
     , bmp
     , gloss
     , lens
@@ -79,7 +84,8 @@ executable sokoban-gloss-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      ALUT
+    , base >=4.7 && <5
     , bmp
     , gloss
     , lens
@@ -97,7 +103,8 @@ test-suite sokoban-gloss-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      ALUT
+    , base >=4.7 && <5
     , bmp
     , gloss
     , lens
