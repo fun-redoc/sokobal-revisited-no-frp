@@ -1,4 +1,4 @@
-{-# LANGUAGE BlockArguments, TemplateHaskell #-}
+{-# LANGUAGE BlockArguments, TemplateHaskell, BangPatterns #-}
 
 module Main where
 
@@ -10,17 +10,23 @@ import Data.Either
 import Data.Maybe (fromMaybe)
 import Data.List ( intercalate )
 import Control.Monad
+import Control.Monad.IO.Class (liftIO)
 import Codec.BMP
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss
 --import Graphics.Gloss.Interface.Pure.Game
-import System.IO
+import System.IO hiding (hGetContents)
+import System.IO.Strict (hGetContents)
+import System.IO.Error
 import System.Environment
+import System.Directory (getHomeDirectory)
 import System.Exit
 import Control.Lens
 import qualified Sound.ALUT as AL hiding (Static)
 import Paths_sokoban_gloss
 
+level_path::String
+level_path = "/.sokobanLastLevel.txt"
 
 loadSound path = do
       -- Create an AL buffer from the given sound file.
@@ -54,6 +60,36 @@ backgroundColor = makeColor 0 0 0 255
 screenWidth  = 640::Float
 screenHeight = 400::Float
 
+
+getLastLevel::IO Int
+getLastLevel = do
+    res <- tryIOError $ do
+                          homeDir <- getHomeDirectory
+                          handle <- openFile (homeDir++level_path) ReadMode
+                          !contents <- hGetContents handle
+                          hClose handle
+                          return (read contents::Int)
+    return $ fromRight 0 res
+
+-- TODO should not be used in mai thread
+putLevel::Int->IO ()
+putLevel n = do
+    res <- tryIOError $ do
+                          homeDir <- getHomeDirectory
+                          handle <- openFile (homeDir++level_path) WriteMode
+                          hPutStr handle (show n)
+                          hClose handle
+    return ()
+
+-- TODO should not be used in mai thread
+loadLevel::Int->IO GameState
+loadLevel n = do level' <- fileLevelReader n
+                 return $ case level' of
+                            Nothing -> ErrorState "Failed to load Level."
+                            Just level -> Playing $ Game n level []
+
+restartLevel game = loadLevel (game^.level)
+
 handleInput::Event->GameState->GameState
 handleInput (EventKey (Char c) Down _ _) (Playing game) = if isWon $ newGame^.field
                                                           then WonGame newGame
@@ -72,15 +108,18 @@ handleInput (EventKey (Char c) Down _ _) (Playing game) = if isWon $ newGame^.fi
 handleInput _                              gameState      = gameState
 
 handleInputIO::Event->GameState->IO GameState
-handleInputIO (EventKey _          Up   _ _) StartGame        = do level0 <- fileLevelReader 0
-                                                                   return $ case level0 of
-                                                                              Nothing -> ErrorState "Failed to load Levels."
-                                                                              Just level0' -> Playing $ Game 0 level0'
-handleInputIO (EventKey (SpecialKey KeyEnter) Up _ _) (WonGame   game) = do nextLevel <- fileLevelReader $ game^.level + 1
-                                                                            return $ case nextLevel of
-                                                                              Nothing -> FinishedAllLevels game
-                                                                              Just level' -> Playing $ Game (game^.level + 1) level'
-                            
+handleInputIO (EventKey (Char 'q') Down _ _) (Playing game)        = do putLevel (game^.level)
+                                                                        exitSuccess
+handleInputIO (EventKey (Char 'r') Down _ _) (Playing game)        = restartLevel game
+handleInputIO (EventKey (Char 'u') Down _ _) (Playing game)        = return $ Playing $ if null (game^.history)
+                                                                                         then game
+                                                                                         else head (game^.history)
+handleInputIO (EventKey (Char 'q') Down _ _) _                     = exitSuccess
+handleInputIO (EventKey _          Up   _ _) StartGame        = do savedLevel <- getLastLevel
+                                                                   loadLevel savedLevel
+handleInputIO (EventKey (SpecialKey KeyEnter) Up _ _) (WonGame   game) = do putLevel (game^.level)
+                                                                            loadLevel (game^.level + 1)
+
 handleInputIO (EventKey _          Up   _ _) (LostGame  game) = undefined
 handleInputIO evt                            gameState        = return $ handleInput evt gameState
 
@@ -145,6 +184,10 @@ loadPicture fileName = do
    return (texture, toPoint size)
 
 
+gameLoopIO::Float->GameState->IO GameState
+--gameLoopIO dt (Moving game) = return $ Moving game
+gameLoopIO dt = return
+
 main :: IO ()
 --main = do
 main = AL.withProgNameAndArgs AL.runALUT $ \progName args -> do
@@ -198,6 +241,7 @@ main = AL.withProgNameAndArgs AL.runALUT $ \progName args -> do
                                                                      sokobanTexture)
                                    ))
                --(liftM'' handleInput)
+               --(liftM'' (const id))
                handleInputIO
-               (liftM'' (const id))
+               gameLoopIO
    exitSuccess

@@ -45,7 +45,7 @@ testLevelChars =             ["#######",
 data GameField = GameField { _walls::[Pos], _storage::[Pos], _crates::[Pos], _sokoban::Maybe Pos } deriving (Eq, Show)
 makeLenses ''GameField
 
-data Game = Game { _level::Int, _field::GameField}
+data Game = Game { _level::Int, _field::GameField, _history::[Game]}
 makeLenses ''Game
 
 data GameState = StartGame --      Game
@@ -77,7 +77,8 @@ moveTransitive pos dir ps gf = if null adjacentAndTransitive
           idx  = pos' `elemIndex` ps
 
 moveManInGame::Dir->Game->Game
-moveManInGame dir game = game & field .~ moveMan dir (game^.field)
+moveManInGame dir game = game & field   .~ moveMan dir (game^.field)
+                              & history .~ game : game^.history
 
 moveMan::Dir->GameField->GameField
 moveMan NoMove    = id

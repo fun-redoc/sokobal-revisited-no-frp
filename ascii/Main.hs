@@ -78,7 +78,7 @@ main = do
   if isNothing field'
     then exitFailure --"no level"
     else do
-            let initialGame = Game {_level=0, _field=fromJust field'}
+            let initialGame = Game {_level=0, _field=fromJust field', _history=[]}
 
             -- game loop
             evalStateT (gameLoopState fileLevelReader) initialGame

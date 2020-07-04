@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c4112eb8ceb8dd2cf836f6146583129de2ce4b940d92be3fa73076dc7e4b533
+-- hash: 69ab4c1de6699a7224c6e7def8b573f20b32f814be2b21960a5808200efc90bf
 
 name:           sokoban-gloss
 version:        0.1.0.0
@@ -48,8 +48,10 @@ library
       ALUT
     , base >=4.7 && <5
     , bmp
+    , directory
     , gloss
     , lens
+    , strict
     , transformers
     , vector
   default-language: Haskell2010
@@ -67,9 +69,11 @@ executable sokoban-ascii-exe
       ALUT
     , base >=4.7 && <5
     , bmp
+    , directory
     , gloss
     , lens
     , sokoban-gloss
+    , strict
     , transformers
     , vector
   default-language: Haskell2010
@@ -87,9 +91,11 @@ executable sokoban-gloss-exe
       ALUT
     , base >=4.7 && <5
     , bmp
+    , directory
     , gloss
     , lens
     , sokoban-gloss
+    , strict
     , transformers
     , vector
   default-language: Haskell2010
@@ -106,9 +112,11 @@ test-suite sokoban-gloss-test
       ALUT
     , base >=4.7 && <5
     , bmp
+    , directory
     , gloss
     , lens
     , sokoban-gloss
+    , strict
     , transformers
     , vector
   default-language: Haskell2010
